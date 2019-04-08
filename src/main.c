@@ -94,20 +94,23 @@ volatile Bool f_rtt_alarme = false;
 static void Button1_Handler(uint32_t id, uint32_t mask)
 {
 	mag_pulses = mag_pulses+1;
+	
 }
 static void Button2_Handler(uint32_t id, uint32_t mask)
 {
-	what-=1;
+	what = what -1;
 	if (what < 0){
 		what = 2;
 	}
+	flag_draw = true;
 }
 static void Button3_Handler(uint32_t id, uint32_t mask)
 {
-	what-=1;
+	what =what+1;
 	if (what > 2){
 		what = 0;
 	}
+	flag_draw = true;
 }
 
 void RTT_Handler(void)
@@ -119,8 +122,9 @@ void RTT_Handler(void)
 
 	/* IRQ due to Time has changed */
 	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {
+		
 	vel = 2*3.1415*raio*mag_pulses/(4);
-	distance += 2*3.1415*raio;
+	distance += 2*3.1415*raio*mag_pulses+distance;
 	mag_pulses = 0;
 	flag_draw = true;
 	}
@@ -128,7 +132,7 @@ void RTT_Handler(void)
 	/* IRQ due to Alarm */
 	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
 		   
-		
+		flag_draw = true;
 		f_rtt_alarme = true;                  // flag RTT alarme
 	}
 }
@@ -267,29 +271,35 @@ int main (void)
 		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 		
 		if(flag_draw){
+			//gfx_mono_draw_string("                   ",0,16,&sysfont);
 			if(what==0){
-				sprintf(&buffer,"%d",vel);
-				gfx_mono_draw_string("Vel: ",1,16,&sysfont);
+				sprintf(&buffer,"%f",vel);
+				gfx_mono_draw_string("Vel  ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
+			
 			}
 			else if(what==1){
-				sprintf(&buffer,"%d",distance);
-				gfx_mono_draw_string("Dist: ",16,16,&sysfont);
+				sprintf(&buffer,"%f",distance);
+				gfx_mono_draw_string("Mts ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
 			else if(what==2){
-				sprintf(&buffer,"%d",distance);
-				gfx_mono_draw_string("Time: ",16,16,&sysfont);
+				sprintf(&buffer,"%f",distance);
+				gfx_mono_draw_string("Tmp ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
 			flag_draw = false;
 		}
+		if (f_rtt_alarme){
+			uint16_t pllPreScale = (int) (((float) 32768) / 2.0);
+			uint32_t irqRTTvalue  = 2;
+			RTT_init(pllPreScale, irqRTTvalue);
+			f_rtt_alarme = false;
+		}
 		
 	}
-	if (f_rtt_alarme){
-      uint16_t pllPreScale = (int) (((float) 32768) / 2.0);
-      uint32_t irqRTTvalue  = 2;
-      RTT_init(pllPreScale, irqRTTvalue);         
-      f_rtt_alarme = false;
-    }
+	
+	
+	
+	
 }
