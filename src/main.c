@@ -84,8 +84,9 @@
 volatile int mag_pulses = 0;
 volatile int vel = 0;
 volatile int distance = 0;
-volatile double raio = 1;
-volatile bool flag_draw = 0;
+volatile double raio = 0.65;
+volatile bool flag_draw = false;
+volatile bool on_off = false;
 volatile char what = 0;
 volatile Bool f_rtt_alarme = false;
 volatile int temps = 0;
@@ -98,7 +99,15 @@ static void Button3_Handler(uint32_t id, uint32_t mask)
 }
 static void Button1_Handler(uint32_t id, uint32_t mask)
 {
+	pmc_disable_periph_clk(ID_RTC);
 	//play pause
+	if(on_off){
+		on_off = false;		
+	}
+	else{
+		on_off = true;
+		mag_pulses = 0;
+	}
 }
 static void Button2_Handler(uint32_t id, uint32_t mask)
 {
@@ -120,11 +129,14 @@ void RTT_Handler(void)
 
 	/* IRQ due to Time has changed */
 	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {
-		
-	vel = 3.6*2*3.1415*raio*mag_pulses/(4);
-	distance = 2*3.1415*raio*mag_pulses + distance;
-	mag_pulses = 0;
-	flag_draw = true;
+	
+		vel = 3.6*2*3.1415*raio*mag_pulses/(4);
+	
+		if(on_off){
+			distance = 2*3.1415*raio*mag_pulses + distance;
+		}
+		mag_pulses = 0;
+		flag_draw = true;
 	}
 
 	/* IRQ due to Alarm */
@@ -142,7 +154,9 @@ void RTC_Handler(void)
 
 	if ((ul_status & RTC_SR_SEC) == RTC_SR_SEC) {
 		rtc_clear_status(RTC, RTC_SCCR_SECCLR);
-		temps = temps+1;
+		if(on_off){
+			temps = temps+1;
+		}
 		flag_draw = true;
 	}
 	
@@ -251,19 +265,18 @@ int main (void)
 		
   /* Insert application code here, after the board has been initialized. */
 	while(1) {
-		//gfx_mono_draw_string("0", 50,16, &sysfont);
 		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 		
 		if(flag_draw){
 			//gfx_mono_draw_string("                   ",0,16,&sysfont);
 			if(what==0){
-				sprintf(&buffer,"%d km/h  ",vel);
+				sprintf(&buffer,"%03d km/h ",vel);
 				gfx_mono_draw_string("Vel  ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			
 			}
 			else if(what==1){
-				sprintf(&buffer,"%d m",distance);
+				sprintf(&buffer,"%04d m  ",distance);
 				gfx_mono_draw_string("Mts ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
@@ -271,7 +284,7 @@ int main (void)
 				int hour = temps/360;
 				int minut = (temps%360)/60;
 				int seconds = (temps%60);		
-				sprintf(buffer,"%02d:%02d:%02d",hour, minut, seconds);
+				sprintf(buffer,"%02d:%02d:%02d  ",hour, minut, seconds);
 				gfx_mono_draw_string(buffer,0,16,&sysfont);
 			}
 			flag_draw = false;
