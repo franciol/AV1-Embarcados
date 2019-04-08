@@ -87,6 +87,8 @@ volatile double distance = 0;
 volatile double raio = 1;
 volatile bool flag_draw = 0;
 volatile char what = 0;
+volatile Bool f_rtt_alarme = false;
+
 
 
 static void Button1_Handler(uint32_t id, uint32_t mask)
@@ -95,13 +97,45 @@ static void Button1_Handler(uint32_t id, uint32_t mask)
 }
 static void Button2_Handler(uint32_t id, uint32_t mask)
 {
-	
+	what-=1;
+	if (what < 0){
+		what = 2;
+	}
 }
 static void Button3_Handler(uint32_t id, uint32_t mask)
 {
-	
+	what-=1;
+	if (what > 2){
+		what = 0;
+	}
 }
 
+void RTT_Handler(void)
+{
+	uint32_t ul_status;
+
+	/* Get RTT status */
+	ul_status = rtt_get_status(RTT);
+
+	/* IRQ due to Time has changed */
+	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {
+	vel = 2*3.1415*raio*mag_pulses/(4);
+	distance += 2*3.1415*raio;
+	mag_pulses = 0;
+	flag_draw = true;
+	}
+
+	/* IRQ due to Alarm */
+	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
+		   
+		
+		f_rtt_alarme = true;                  // flag RTT alarme
+	}
+}
+
+static float get_time_rtt(){
+	uint ul_previous_time = rtt_read_timer_value(RTT);
+}
 void RTC_Handler(void)
 {
 	uint32_t ul_status = rtc_get_status(RTC);
@@ -119,10 +153,7 @@ void RTC_Handler(void)
 	if ((ul_status & RTC_SR_ALARM) == RTC_SR_ALARM) {
 			rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
 			
-			vel = 2*3.1415*raio*mag_pulses/(4);
-			distance += 2*3.1415*raio;  
-			mag_pulses = 0;
-			flag_draw = true;
+			
 			
 			uint32_t YEAR2,MONTH2,DAY2,WEEK2,HOUR2,MINUTE2,SECOND2;
 			
@@ -169,6 +200,28 @@ void BUT_init(void){
 	NVIC_SetPriority(BUT3_PIO_ID, 4);
 	
 };
+
+static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses)
+{
+	uint32_t ul_previous_time;
+
+	/* Configure RTT for a 1 second tick interrupt */
+	rtt_sel_source(RTT, false);
+	rtt_init(RTT, pllPreScale);
+	
+	ul_previous_time = rtt_read_timer_value(RTT);
+	while (ul_previous_time == rtt_read_timer_value(RTT));
+	
+	rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
+
+	/* Enable RTT interrupt */
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+}
+
 void RTC_init(){
 	/* Configura o PMC */
 	pmc_enable_periph_clk(ID_RTC);
@@ -191,13 +244,14 @@ void RTC_init(){
 
 }
 
+
 int main (void)
 {
 	/* Insert system clock initialization code here (sysclk_init()). */
 	WDT->WDT_MR = WDT_MR_WDDIS;
 	board_init();
 	sysclk_init();
-	RTC_init();
+	f_rtt_alarme = true;
 
 	delay_init();
 	BUT_init();
@@ -215,16 +269,27 @@ int main (void)
 		if(flag_draw){
 			if(what==0){
 				sprintf(&buffer,"%d",vel);
-				gfx_mono_draw_string("Vel: ",5,16,&sysfont);
-				gfx_mono_draw_string(buffer,50,16,&sysfont);
+				gfx_mono_draw_string("Vel: ",1,16,&sysfont);
+				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
-			if(what==1){
+			else if(what==1){
 				sprintf(&buffer,"%d",distance);
 				gfx_mono_draw_string("Dist: ",16,16,&sysfont);
-				gfx_mono_draw_string(buffer,50,16,&sysfont);
+				gfx_mono_draw_string(buffer,40,16,&sysfont);
+			}
+			else if(what==2){
+				sprintf(&buffer,"%d",distance);
+				gfx_mono_draw_string("Time: ",16,16,&sysfont);
+				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
 			flag_draw = false;
-			
 		}
+		
 	}
+	if (f_rtt_alarme){
+      uint16_t pllPreScale = (int) (((float) 32768) / 2.0);
+      uint32_t irqRTTvalue  = 2;
+      RTT_init(pllPreScale, irqRTTvalue);         
+      f_rtt_alarme = false;
+    }
 }
