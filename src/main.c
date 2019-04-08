@@ -268,7 +268,8 @@ int main (void)
 		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 		
 		if(flag_draw){
-			//gfx_mono_draw_string("                   ",0,16,&sysfont);
+			
+			
 			if(what==0){
 				sprintf(&buffer,"%03d km/h ",vel);
 				gfx_mono_draw_string("Vel  ",1,16,&sysfont);
