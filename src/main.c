@@ -108,7 +108,9 @@ static void Button2_Handler(uint32_t id, uint32_t mask)
 	}
 	flag_draw = true;
 }
-
+static float get_time_rtt(){
+	uint ul_previous_time = rtt_read_timer_value(RTT);
+}
 void RTT_Handler(void)
 {
 	uint32_t ul_status;
@@ -133,9 +135,7 @@ void RTT_Handler(void)
 	}
 }
 
-static float get_time_rtt(){
-	uint ul_previous_time = rtt_read_timer_value(RTT);
-}
+
 void RTC_Handler(void)
 {
 	uint32_t ul_status = rtc_get_status(RTC);
@@ -247,9 +247,8 @@ int main (void)
 	delay_init();
 	BUT_init();
 	gfx_mono_ssd1306_init();
-	char buffer[32];
-	
-	
+	char buffer[64];
+		
   /* Insert application code here, after the board has been initialized. */
 	while(1) {
 		//gfx_mono_draw_string("0", 50,16, &sysfont);
@@ -272,14 +271,14 @@ int main (void)
 				int hour = temps/360;
 				int minut = (temps%360)/60;
 				int seconds = (temps%60);		
-				sprintf(&buffer,"%d:%d:%d",(hour,minut,seconds));
+				sprintf(buffer,"%02d:%02d:%02d",hour, minut, seconds);
 				gfx_mono_draw_string(buffer,0,16,&sysfont);
 			}
 			flag_draw = false;
 		}
 		if (f_rtt_alarme){
 			uint16_t pllPreScale = (int) (((float) 32768) / 2.0);
-			uint32_t irqRTTvalue  = 2;
+			uint32_t irqRTTvalue  = 8;
 			RTT_init(pllPreScale, irqRTTvalue);
 			f_rtt_alarme = false;
 		}
