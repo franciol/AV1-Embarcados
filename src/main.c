@@ -88,6 +88,7 @@ volatile double raio = 1;
 volatile bool flag_draw = 0;
 volatile char what = 0;
 volatile Bool f_rtt_alarme = false;
+volatile int temps = 0;
 
 
 
@@ -139,27 +140,16 @@ void RTC_Handler(void)
 {
 	uint32_t ul_status = rtc_get_status(RTC);
 
-	/*
-	*  Verifica por qual motivo entrou
-	*  na interrupcao, se foi por segundo
-	*  ou Alarm
-	*/
 	if ((ul_status & RTC_SR_SEC) == RTC_SR_SEC) {
 		rtc_clear_status(RTC, RTC_SCCR_SECCLR);
+		temps = temps+1;
+		flag_draw = true;
 	}
 	
 	/* Time or date alarm */
 	if ((ul_status & RTC_SR_ALARM) == RTC_SR_ALARM) {
 			rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
-			
-			
-			
-			uint32_t YEAR2,MONTH2,DAY2,WEEK2,HOUR2,MINUTE2,SECOND2;
-			
-			rtc_get_date(RTC,&YEAR2,&MONTH2,&DAY2,&WEEK2);
-			rtc_get_time(RTC,&HOUR2,&MINUTE2,&SECOND2);
-			rtc_set_date_alarm(RTC, 1, MONTH2, 1, DAY2);
-			rtc_set_time_alarm(RTC, 1, HOUR2, 1, MINUTE2, 1, SECOND2+4);	
+	
 	}
 	
 	
@@ -240,6 +230,7 @@ void RTC_init(){
 
 	/* Ativa interrupcao via alarme */
 	rtc_enable_interrupt(RTC,  RTC_IER_ALREN);
+	rtc_enable_interrupt(RTC, RTC_IER_SECEN);
 
 }
 
@@ -251,13 +242,12 @@ int main (void)
 	board_init();
 	sysclk_init();
 	f_rtt_alarme = true;
+	RTC_init();
 
 	delay_init();
 	BUT_init();
 	gfx_mono_ssd1306_init();
 	char buffer[32];
-	rtc_set_date_alarm(RTC, 1, MOUNTH, 1, DAY);
-	rtc_set_time_alarm(RTC, 1, HOUR, 1, MINUTE, 1, SECOND+4);
 	
 	
   /* Insert application code here, after the board has been initialized. */
@@ -274,14 +264,16 @@ int main (void)
 			
 			}
 			else if(what==1){
-				sprintf(&buffer,"%d m     ",distance);
+				sprintf(&buffer,"%d m",distance);
 				gfx_mono_draw_string("Mts ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
 			else if(what==2){
-				sprintf(&buffer,"%d:%d:%d",get_time_rtt());
-				gfx_mono_draw_string("Tmp ",1,16,&sysfont);
-				gfx_mono_draw_string(buffer,40,16,&sysfont);
+				int hour = temps/360;
+				int minut = (temps%360)/60;
+				int seconds = (temps%60);		
+				sprintf(&buffer,"%d:%d:%d",(hour,minut,seconds));
+				gfx_mono_draw_string(buffer,0,16,&sysfont);
 			}
 			flag_draw = false;
 		}
