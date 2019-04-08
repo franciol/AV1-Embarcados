@@ -82,8 +82,8 @@
 
 
 volatile int mag_pulses = 0;
-volatile double vel = 0;
-volatile double distance = 0;
+volatile int vel = 0;
+volatile int distance = 0;
 volatile double raio = 1;
 volatile bool flag_draw = 0;
 volatile char what = 0;
@@ -91,20 +91,15 @@ volatile Bool f_rtt_alarme = false;
 
 
 
-static void Button1_Handler(uint32_t id, uint32_t mask)
+static void Button3_Handler(uint32_t id, uint32_t mask)
 {
 	mag_pulses = mag_pulses+1;
-	
+}
+static void Button1_Handler(uint32_t id, uint32_t mask)
+{
+	//play pause
 }
 static void Button2_Handler(uint32_t id, uint32_t mask)
-{
-	what = what -1;
-	if (what < 0){
-		what = 2;
-	}
-	flag_draw = true;
-}
-static void Button3_Handler(uint32_t id, uint32_t mask)
 {
 	what =what+1;
 	if (what > 2){
@@ -123,8 +118,8 @@ void RTT_Handler(void)
 	/* IRQ due to Time has changed */
 	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {
 		
-	vel = 2*3.1415*raio*mag_pulses/(4);
-	distance += 2*3.1415*raio*mag_pulses+distance;
+	vel = 3.6*2*3.1415*raio*mag_pulses/(4);
+	distance = 2*3.1415*raio*mag_pulses + distance;
 	mag_pulses = 0;
 	flag_draw = true;
 	}
@@ -273,18 +268,18 @@ int main (void)
 		if(flag_draw){
 			//gfx_mono_draw_string("                   ",0,16,&sysfont);
 			if(what==0){
-				sprintf(&buffer,"%f",vel);
+				sprintf(&buffer,"%d km/h  ",vel);
 				gfx_mono_draw_string("Vel  ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			
 			}
 			else if(what==1){
-				sprintf(&buffer,"%f",distance);
+				sprintf(&buffer,"%d m     ",distance);
 				gfx_mono_draw_string("Mts ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
 			else if(what==2){
-				sprintf(&buffer,"%f",distance);
+				sprintf(&buffer,"%d:%d:%d",get_time_rtt());
 				gfx_mono_draw_string("Tmp ",1,16,&sysfont);
 				gfx_mono_draw_string(buffer,40,16,&sysfont);
 			}
